@@ -1,0 +1,34 @@
+name: Build Syzu APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup templates and folders
+        run: |
+          mkdir -p build ~/.config/godot ~/.local/share/godot/export_templates
+          cp -r /root/.local/share/godot/export_templates/* ~/.local/share/godot/export_templates/ || true
+      - name: Debug keystore
+        run: |
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$PWD/debug.keystore" >> $GITHUB_ENV
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> $GITHUB_ENV
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> $GITHUB_ENV
+      - name: Editor settings
+        run: |
+          printf '[gd_resource type="EditorSettings" format=3]\n\n[resource]\nexport/android/android_sdk_path = "%s"\nexport/android/java_sdk_path = "%s"\n' "${ANDROID_HOME:-/usr/lib/android-sdk}" "${JAVA_HOME:-/usr/lib/jvm/java-17-openjdk-amd64}" > ~/.config/godot/editor_settings-4.3.tres
+          cp ~/.config/godot/editor_settings-4.3.tres ~/.config/godot/editor_settings-4.tres
+      - name: Import and export APK
+        run: |
+          godot --headless --verbose --import || true
+          godot --headless --verbose --export-debug "Android" build/syzu.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: syzu-apk
+          path: build/syzu.apk
