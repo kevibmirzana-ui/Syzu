@@ -92,6 +92,11 @@ jobs:
           screen/immersive_mode=true
           EOF
           cat project.godot
+      - name: Apply version.env
+        run: |
+          . ./version.env
+          sed -i "s|^version/code=.*|version/code=$VERSION_CODE|; s|^version/name=.*|version/name=\"$VERSION_NAME\"|; s|^package/unique_name=.*|package/unique_name=\"$APP_ID\"|; s|^package/name=.*|package/name=\"$APP_NAME\"|" export_presets.cfg
+          cat export_presets.cfg      
       - name: Import and export APK
         run: |
           godot --headless --verbose --import || true
